@@ -1,0 +1,17 @@
+# Development Dockerfile for gateway
+
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+ENV NODE_ENV=development
+ENV GATEWAY_PORT=5921
+
+EXPOSE 5921
+
+CMD ["npm", "run", "dev"]

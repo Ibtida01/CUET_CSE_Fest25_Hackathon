@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: dev-mongo
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    # Mongo will read MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD
+    # from the env file inside the container
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - dev-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: dev-backend
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    # Backend will read MONGO_URI, MONGO_DATABASE, BACKEND_PORT, NODE_ENV from .env
+    depends_on:
+      - mongo
+    networks:
+      - dev-net
+    # Note: no ports section here, backend is not exposed publicly
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile.dev
+    container_name: dev-gateway
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    # Gateway reads GATEWAY_PORT, NODE_ENV from .env
+    # We explicitly tell it where backend lives inside Docker net:
+    environment:
+      BACKEND_URL: http://backend:3847
+    depends_on:
+      - backend
+    ports:
+      - "5921:5921"
+    networks:
+      - dev-net
+
+volumes:
+  mongo_data:
+
+networks:
+  dev-net:
+    driver: bridge

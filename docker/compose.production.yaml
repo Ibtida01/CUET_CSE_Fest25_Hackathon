@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: prod-mongo
+    restart: always
+    env_file:
+      - ../.env
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - prod-net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: prod-backend
+    restart: always
+    env_file:
+      - ../.env
+    depends_on:
+      - mongo
+    networks:
+      - prod-net
+    # Backend stays private (no ports)
+
+  gateway:
+    build:
+      context: ../gateway
+      dockerfile: Dockerfile
+    container_name: prod-gateway
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      BACKEND_URL: http://backend:3847
+    depends_on:
+      - backend
+    ports:
+      - "5921:5921"
+    networks:
+      - prod-net
+
+volumes:
+  mongo_data:
+
+networks:
+  prod-net:
+    driver: bridge
