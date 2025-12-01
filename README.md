@@ -161,3 +161,6 @@ curl http://localhost:3847/api/products
 
 Good luck!
 
+CI test: this line is just to trigger the pipeline.
+
+
