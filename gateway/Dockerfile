@@ -4,28 +4,24 @@ FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Install dependencies
+# Install only production dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install --omit=dev
 
-# Copy source and build
+# Copy source code
 COPY . .
-RUN npm run build
 
 FROM node:20-alpine AS runner
 
 WORKDIR /usr/src/app
 
 ENV NODE_ENV=production
+ENV GATEWAY_PORT=5921
 
-# Install only production dependencies
-COPY package*.json ./
-RUN npm install --omit=dev
-
-COPY --from=builder /usr/src/app/dist ./dist
+# Copy app code and node_modules from builder
+COPY --from=builder /usr/src/app ./
 
 # Fixed by problem statement
-ENV GATEWAY_PORT=5921
 EXPOSE 5921
 
 CMD ["npm", "run", "start"]
