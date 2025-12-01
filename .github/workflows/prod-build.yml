@@ -1,0 +1,32 @@
+name: Production Build
+
+on:
+  push:
+    branches: [ main ]
+  # or on tags:
+  # push:
+  #   tags:
+  #     - "v*.*.*"
+
+jobs:
+  build-prod-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env for prod build
+        run: |
+          cat << 'EOF' > .env
+          MONGO_INITDB_ROOT_USERNAME=prodUser
+          MONGO_INITDB_ROOT_PASSWORD=prodPass
+          MONGO_URI=mongodb://prodUser:prodPass@mongo:27017/proddb?authSource=admin
+          MONGO_DATABASE=proddb
+          BACKEND_PORT=3847
+          GATEWAY_PORT=5921
+          NODE_ENV=production
+          EOF
+
+      - name: Build production docker-compose
+        run: docker compose -f docker/compose.production.yaml build

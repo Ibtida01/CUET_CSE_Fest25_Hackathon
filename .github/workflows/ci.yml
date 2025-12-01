@@ -1,0 +1,66 @@
+name: CI - Build and Health Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          cat << 'EOF' > .env
+          MONGO_INITDB_ROOT_USERNAME=ciUser
+          MONGO_INITDB_ROOT_PASSWORD=ciPass
+          MONGO_URI=mongodb://ciUser:ciPass@mongo:27017/devdb?authSource=admin
+          MONGO_DATABASE=devdb
+          BACKEND_PORT=3847
+          GATEWAY_PORT=5921
+          NODE_ENV=test
+          EOF
+
+      - name: Show docker version
+        run: docker version
+
+      - name: Build dev docker-compose
+        run: docker compose -f docker/compose.development.yaml build
+
+      - name: Start services
+        run: docker compose -f docker/compose.development.yaml up -d
+
+      - name: Wait for services to be ready
+        run: sleep 20
+
+      - name: Health check - gateway
+        run: |
+          curl -f http://localhost:5921/health
+          curl -f http://localhost:5921/api/health
+
+      - name: Create product via gateway
+        run: |
+          curl -f -X POST http://localhost:5921/api/products \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI Test Product","price":99.99}'
+
+      - name: List products via gateway
+        run: curl -f http://localhost:5921/api/products
+
+      - name: Verify backend is not exposed directly
+        run: |
+          if curl -sSf http://localhost:3847/api/products; then
+            echo "Backend is directly accessible on port 3847. This should NOT happen."
+            exit 1
+          else
+            echo "Backend is not exposed directly. Good."
+          fi
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker/compose.development.yaml down
